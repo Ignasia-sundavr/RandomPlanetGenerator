@@ -18,6 +18,8 @@ public class Planet : MonoBehaviour
     public float oceanicRate = 0.7f;
     public float heatLevel = 1.0f;
     public float moistureLevel = 1.0f;
+    public float elevationScale = 10;
+    public Shader planetShader;
 
     public float PlanetScale
     {
@@ -27,6 +29,10 @@ public class Planet : MonoBehaviour
         }
     }
 
+    private void Start() {
+        Camera cam = Camera.main;
+        cam.transform.position = this.transform.position + (-cam.transform.forward) * 2 * this.PlanetScale;
+    }
     void Awake()
     {
         //Generate();
@@ -41,23 +47,37 @@ public class Planet : MonoBehaviour
         this.GeneratePlanetTectonicPlates();
         this.GeneratePlanetElevation();
         //DrawTectonicPlates(6000f);
-        this.GeneratePlanetMesh(false);
+        this.planetShader = Shader.Find("Particles/Standard Surface");
+        this.GeneratePlanetMesh(true);
+        this.subdivisionLevel = subdivisionLevel;
     }
 
     void Update()
     {
-#if UNITY_STANDALONE || UNITY_EDITOR
-        Tile tile;
-        this.IntersectRay(Camera.main.ScreenPointToRay(Input.mousePosition), out tile);
-        if (tile != null)
-        {
-            tile.DebugDraw(Color.red, 0, this.transform.localScale.x / 100f, this.transform);
-            //foreach(var t in tile.plate.tiles)
-            //{
-            //    t.DebugDraw(Color.green, 0, this.transform.localScale.x / 150f, this.transform);
-            //}
+//#if UNITY_STANDALONE || UNITY_EDITOR
+//        Tile tile;
+//        this.IntersectRay(Camera.main.ScreenPointToRay(Input.mousePosition), out tile);
+//        if (tile != null)
+//        {
+//            tile.DebugDraw(Color.red, 0, this.transform.localScale.x / 100f, this.transform);
+//            //foreach(var t in tile.plate.tiles)
+//            //{
+//            //    t.DebugDraw(Color.green, 0, this.transform.localScale.x / 150f, this.transform);
+//            //}
+//        }
+//#endif
+        float spinYRate = 1; // Set desired spin rate for this planet [deg per second]
+float rotY = spinYRate*Time.deltaTime; // [deg per second] * [seconds per frame] = [deg per frame]
+this.transform.Rotate(0, rotY, 0);
+
+        float rotationRate = 1; // 1 degree per frame update while key remains pressed
+        float rotX = Input.GetAxis("Vertical") * rotationRate;
+        rotY = Input.GetAxis("Horizontal") * rotationRate;
+        if (rotX != 0 | rotY != 0) {
+            Camera cam = Camera.main;
+            cam.transform.Rotate(rotX, rotY, 0);
+            cam.transform.position = this.transform.position + (-cam.transform.forward) * 2 * this.PlanetScale;
         }
-#endif
     }
 
     void DrawTectonicPlates(float duration)
@@ -147,7 +167,7 @@ public class Planet : MonoBehaviour
                 var mesh = new Mesh { name = "World Mesh" };
                 go.AddComponent<MeshFilter>().mesh = mesh;
                 var mr = go.AddComponent<MeshRenderer>();
-                mr.material = new Material(Shader.Find("Standard (Vertex Color)"));
+                mr.material = new Material(this.planetShader);
                 //mesh.uv = UV;
 
                 for (int i = 0; i < verts.Count; i++)
@@ -168,7 +188,7 @@ public class Planet : MonoBehaviour
                 colors.Clear();
             }
             var tileNorm = (this.transform.rotation * tile.normal).normalized;
-            var tileOffset = (heights) ? (tile.elevation) * transform.localScale.x / 30f : 0f;
+            var tileOffset = (heights) ? (tile.elevation) * transform.localScale.x / elevationScale : 0f;
 
 
             verts.Add(trs.MultiplyPoint3x4(tile.averagePosition) + tileNorm * tileOffset);
@@ -277,7 +297,7 @@ public class Planet : MonoBehaviour
         var mesh2 = new Mesh { name = "World Mesh" };
         ch.AddComponent<MeshFilter>().mesh = mesh2;
         var mr2 = ch.AddComponent<MeshRenderer>();
-        mr2.material = new Material(Shader.Find("Standard (Vertex Color)"));
+        mr2.material = new Material(this.planetShader);
         //mesh.uv = UV;
         colors = new List<Color>(verts.Count);
 
